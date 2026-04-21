@@ -162,5 +162,3 @@ Jika deployment baru gagal pada tahap *Smoke Test* atau *Security Scan*, Jenkins
 ## 🌐 Akses Aplikasi
 - **Aplikasi Utama:** `http://85.211.253.241`
 - **Jenkins Dashboard:** `http://85.211.243.25:8080`
-```
-
