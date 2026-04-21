@@ -138,32 +138,29 @@ terraform apply
 
 ## ⚙️ Tahap 3: Configuration as Code (Ansible + JCasC)
 **🎯 Tujuan**
+Setup server dan konfigurasi Jenkins secara instan tanpa konfigurasi manual lewat UI (*Zero-Touch*).
 
-Mengotomatisasi setup server & Jenkins.
-
-**🔧 Implementasi**
-**Setup Node**
-- Install Docker
-- Install dependencies
-**Setup Jenkins**
-- Install Jenkins container
-- Install plugin
-**JCasC**
-- Setup pipeline
-- Setup credentials (Docker Hub & SSH)
+**🔧 Strategi 2-Fase**
+1.  **Fase 1:** Menjalankan Jenkins kontainer polos untuk instalasi plugin (Job DSL, JCasC, Git, dll).
+2.  **Fase 2:** Injeksi file `jenkins.yaml` untuk membuat kredensial dan job pipeline secara otomatis.
 
 **▶️ Eksekusi**
+```bash
+cd ansible
+source .env && ansible-playbook -i inventory.ini setup.yml
+```
 
-**🚀 Deployment Otomatis**
-
-**📌 Output Tahap 3**
-
-## 🔍 Traceability
+## 🔍 Traceability & Monitoring
+- **GitHub Webhook:** Sinkronisasi otomatis setiap kali ada `git push`.
+- **Slack Notification:** Notifikasi real-time ke channel `#deployments` untuk setiap status build (Success/Fail).
 
 ## 🔁 Rollback Automation
-```
-docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:latest
-```
+Jika deployment baru gagal pada tahap *Smoke Test* atau *Security Scan*, Jenkins akan secara otomatis menjalankan kembali image dengan tag `:latest` (versi stabil sebelumnya) di VM Target untuk menjaga ketersediaan layanan.
 
 ## 🌐 Akses Aplikasi
+- **Aplikasi Utama:** `http://85.211.253.241`
+- **Jenkins Dashboard:** `http://85.211.243.25:8080`
+```
+
+---
 
