@@ -30,6 +30,25 @@
   hosts: jenkins
   become: yes
   tasks:
+    - name: Buat direktori untuk JCasC
+      file:
+        path: /var/jenkins_home/casc_configs
+        state: directory
+        owner: "1000"
+        group: "1000"
+        mode: '0755'
+
+    - name: Copy file konfigurasi JCasC
+      copy:
+        src: ./jenkins.yaml
+        dest: /var/jenkins_home/casc_configs/jenkins.yaml
+        owner: "1000"
+        group: "1000"
+
+    - name: Hapus kontainer lama jika ada
+      command: docker rm -f jenkins
+      ignore_errors: yes
+
     - name: Set permission folder Jenkins Home untuk UID 1000
       file:
         path: /var/jenkins_home
@@ -37,32 +56,15 @@
         owner: "1000"
         group: "1000"
         mode: '0755'
-      
-    - name: Buat direktori untuk JCasC
-      file:
-        path: /var/jenkins_home/casc_configs
-        state: directory
-        mode: '0755'
-
-    - name: Copy file konfigurasi JCasC
-      copy:
-        src: ./jenkins.yaml
-        dest: /var/jenkins_home/casc_configs/jenkins.yaml
 
     - name: Jalankan Jenkins Container
       docker_container:
         name: jenkins
         image: jenkins/jenkins:lts
+        state: started
         ports:
           - "8080:8080"
           - "50000:50000"
         volumes:
-          - /var/run/docker.sock:/var/run/docker.sock  # Untuk Docker-outside-of-Docker
+          - /var/run/docker.sock:/var/run/docker.sock
           - /var/jenkins_home:/var/jenkins_home
-        env:
-          JAVA_OPTS: "-Djenkins.install.runSetupWizard=false" # Lewati wizard manual
-          CASC_JENKINS_CONFIG: "/var/jenkins_home/casc_configs/jenkins.yaml"
-          # Ansible akan membaca file .pem dan memasukkannya ke variabel ini
-          TARGET_VM_PRIVATE_KEY: "{{ lookup('file', '../terraform/ssh_private_key.pem') }}"
-          # Anda juga bisa memasukkan password Docker Hub di sini
-          DOCKER_HUB_PASSWORD: "{{ lookup('env', 'DOCKER_HUB_PASSWORD') }}"

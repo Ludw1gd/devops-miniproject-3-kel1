@@ -6,31 +6,29 @@ jenkins:
       allowsSignup: false
       users:
         - id: "admin"
-          password: "adminpassword" # Segera ganti setelah login pertama
+          password: "adminpassword"
 
-  # Otomatisasi Kredensial
-  credentials:
-    system:
-      domainCredentials:
-        - credentials:
-            - usernamePassword:
-                scope: GLOBAL
-                id: "dockerhub-credentials"
-                username: "abhi1020" # Username Docker Hub Anda
-                password: "${DOCKER_HUB_PASSWORD}"
-            - basicSSHUserPrivateKey:
-                scope: GLOBAL
-                id: "target-vm-ssh"
-                username: "azureuser"
-                privateKeySource:
-                  directEntry:
-                    privateKey: "${TARGET_VM_PRIVATE_KEY}"
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: "dockerhub-credentials"
+              username: "abhi1020"
+              password: "henshin 1020"
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "target-vm-ssh"
+              username: "azureuser"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${TARGET_VM_PRIVATE_KEY}"
 
 unclassified:
   location:
     url: "http://85.211.243.25:8080/"
 
-# Otomatisasi Pembuatan Job Pipeline 
 jobs:
   - script: >
       pipelineJob('CI-CD-Pipeline-App') {
@@ -44,7 +42,7 @@ jobs:
                 branches('main')
               }
             }
-            scriptPath('jenkins/Jenkinsfile') # Jalankan Jenkinsfile dari folder /jenkins
+            scriptPath('jenkins/Jenkinsfile')
           }
         }
       }
