@@ -165,6 +165,21 @@ resource "azurerm_network_security_group" "nsg" {
     }
   }
 
+  dynamic "security_rule" {
+    for_each = each.value.open_80 ? [1] : []
+    content {
+      name                       = "Allow-HTTP-80"
+      priority                   = 120
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "80"
+      source_address_prefix      = "*"
+      destination_address_prefix = "*"
+    }
+  }
+
   # ---- RULE 3: Deny semua traffic inbound lain ----------------------------
   security_rule {
     name                       = "Deny-All-Inbound"

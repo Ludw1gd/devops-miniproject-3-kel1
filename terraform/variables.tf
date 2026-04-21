@@ -40,17 +40,20 @@ variable "vms" {
     role      = string
     size      = string
     open_8080 = bool
+    open_80   = bool
   }))
   default = {
     jenkins = {
       role      = "jenkins-node"
       size      = "Standard_D2s_v3"
       open_8080 = true
+      open_80   = false
     }
     target = {
       role      = "target-node"
       size      = "Standard_D2s_v3"
       open_8080 = false
+      open_80   = true
     }
   }
 }
