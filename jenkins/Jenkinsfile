@@ -1,0 +1,100 @@
+pipeline {
+    agent any
+
+    environment {
+        // Variabel Kredensial yang harus disiapkan di Jenkins
+        DOCKER_CRED_ID = 'dockerhub-credentials' 
+        SSH_CRED_ID = 'target-vm-ssh'
+        SLACK_WORKSPACE = 'slack-token' // Opsional jika plugin butuh token spesifik
+        
+        // Konfigurasi Image
+        DOCKER_IMAGE = 'abhi1020/miniproject3-app' // Ganti dengan repository Docker Hub Anda
+        TARGET_IP = 'IP_ADDRESS_VM_TARGET' // Minta IP ini dari rekan yang mengerjakan Terraform
+        
+        // Pipeline Traceability: Mengambil 7 karakter Git Commit ID sebagai Tag
+        GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        IMAGE_TAG = "${GIT_COMMIT_SHORT}"
+    }
+
+    stages {
+        stage('Build Image') {
+            steps {
+                echo "Membangun Docker Image versi: ${IMAGE_TAG}"
+                // Arahkan context build ke folder /app sesuai struktur repositori Anda
+                dir('app') {
+                    sh 'docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .'
+                    sh 'docker tag ${DOCKER_IMAGE}:${IMAGE_TAG} ${DOCKER_IMAGE}:latest'
+                }
+            }
+        }
+
+        stage('Security Scan (DevSecOps)') {
+            steps {
+                echo "Memindai kerentanan menggunakan Docker Scout..."
+                // Otomatis gagal jika terdeteksi kerentanan Critical atau High
+                sh 'docker scout cves --fail-on critical,high ${DOCKER_IMAGE}:${IMAGE_TAG}'
+            }
+        }
+
+        stage('Push to Registry') {
+            steps {
+                echo "Mengunggah image ke Docker Hub..."
+                withCredentials([usernamePassword(credentialsId: env.DOCKER_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker push ${DOCKER_IMAGE}:${IMAGE_TAG}'
+                    sh 'docker push ${DOCKER_IMAGE}:latest'
+                }
+            }
+        }
+
+        stage('Deploy to Target Node') {
+            steps {
+                echo "Men-deploy image versi ${IMAGE_TAG} ke Target VM Azure..."
+                withCredentials([sshUserPrivateKey(credentialsId: env.SSH_CRED_ID, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                    sh '''
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_USER@${TARGET_IP} "
+                            docker pull ${DOCKER_IMAGE}:${IMAGE_TAG} &&
+                            docker stop myapp-prod || true &&
+                            docker rm myapp-prod || true &&
+                            docker run -d -p 80:80 --name myapp-prod ${DOCKER_IMAGE}:${IMAGE_TAG}
+                        "
+                    '''
+                }
+            }
+        }
+        
+        // Opsional: Tahap Smoke Test (Memastikan aplikasi merespons HTTP 200)
+        stage('Smoke Test') {
+            steps {
+                echo "Melakukan pengujian pasca-deployment..."
+                // Jika curl gagal, pipeline akan error dan memicu blok 'failure' untuk Rollback
+                sh "curl -f http://${TARGET_IP} || exit 1"
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment Berhasil!"
+            slackSend(color: 'good', message: "✅ *Deployment Berhasil* | Aplikasi: Miniproject 3 | Commit Tag: `${IMAGE_TAG}` | Build #${env.BUILD_NUMBER}")
+        }
+        failure {
+            echo "Deployment Gagal! Memulai proses Rollback otomatis..."
+            slackSend(color: 'danger', message: "🚨 *Deployment Gagal* | Commit Tag: `${IMAGE_TAG}` | Memulai Rollback ke versi `latest` yang stabil...")
+            
+            script {
+                withCredentials([sshUserPrivateKey(credentialsId: env.SSH_CRED_ID, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                    sh '''
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_USER@${TARGET_IP} "
+                            echo 'Menjalankan Rollback...' &&
+                            docker stop myapp-prod || true &&
+                            docker rm myapp-prod || true &&
+                            docker run -d -p 80:80 --name myapp-prod ${DOCKER_IMAGE}:latest
+                        "
+                    '''
+                }
+            }
+            slackSend(color: 'warning', message: "⚠️ *Rollback Selesai* | Sistem telah dikembalikan ke versi sebelumnya.")
+        }
+    }
+}
