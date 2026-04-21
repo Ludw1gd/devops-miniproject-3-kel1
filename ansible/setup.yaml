@@ -66,7 +66,7 @@
     # ==========================================
     # PERSIAPAN LINGKUNGAN
     # ==========================================
-    - name: Set permission folder Jenkins Home untuk UID 1000
+    - name: Set permission folder Jenkins Home
       file:
         path: /var/jenkins_home
         state: directory
@@ -89,9 +89,23 @@
         owner: 1000
         group: 1000
 
-    - name: Hapus kontainer lama jika ada (Reset Bersih)
+    - name: Hapus kontainer lama jika ada
       command: docker rm -f jenkins
       ignore_errors: yes
+
+    # ==========================================
+    # BUILD CUSTOM IMAGE (FIX docker not found)
+    # ==========================================
+    - name: Copy Dockerfile.jenkins ke server
+      copy:
+        src: ./Dockerfile.jenkins       # letakkan di folder ansible/
+        dest: /tmp/Dockerfile.jenkins
+
+    - name: Build custom Jenkins image dengan Docker CLI
+      command: docker build -f /tmp/Dockerfile.jenkins -t jenkins-with-docker:latest /tmp
+      register: build_result
+      failed_when: build_result.rc != 0
+      changed_when: "'Successfully built' in build_result.stdout or 'writing image' in build_result.stdout"
 
     # ==========================================
     # FASE 1: JALANKAN JENKINS POLOS
@@ -99,7 +113,7 @@
     - name: Fase 1 - Jalankan Jenkins Container (Tanpa JCasC)
       community.docker.docker_container:
         name: jenkins
-        image: jenkins/jenkins:lts
+        image: jenkins-with-docker:latest    # ← custom image
         state: started
         ports:
           - "8080:8080"
@@ -110,13 +124,8 @@
         user: root
         env:
           JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
-    
-    - name: Install Docker CLI di dalam Jenkins container
-      command: >
-        docker exec jenkins bash -c 
-        "apt-get update -qq && apt-get install -y docker.io"
 
-    - name: Tunggu Jenkins HTTP ready (bukan pakai pause)
+    - name: Tunggu Jenkins HTTP ready
       uri:
         url: "http://localhost:8080/login"
         status_code: 200
@@ -145,7 +154,7 @@
     - name: Restart Jenkins agar plugin aktif
       command: docker restart jenkins
 
-    - name: Tunggu Jenkins ready setelah restart plugin
+    - name: Tunggu Jenkins ready setelah restart
       uri:
         url: "http://localhost:8080/login"
         status_code: 200
@@ -161,7 +170,7 @@
     - name: Fase 2 - Buat Ulang Jenkins Container (Dengan JCasC)
       community.docker.docker_container:
         name: jenkins
-        image: jenkins/jenkins:lts
+        image: jenkins-with-docker:latest    # ← custom image
         state: started
         recreate: yes
         ports:
@@ -176,7 +185,7 @@
           CASC_JENKINS_CONFIG: "/var/jenkins_home/casc_configs/jenkins.yaml"
           TARGET_VM_PRIVATE_KEY: "{{ lookup('file', '../terraform/ssh_private_key.pem') }}"
           DOCKER_HUB_PASSWORD: "{{ lookup('env', 'DOCKER_HUB_PASSWORD') }}"
-      no_log: true  # Sembunyikan private key dari log
+      no_log: true
 
     - name: Tunggu Jenkins Fase 2 siap
       uri:
@@ -188,7 +197,11 @@
       retries: 30
       delay: 10
 
-    - name: Verifikasi Jenkins berjalan normal
+    - name: Verifikasi Docker CLI tersedia di dalam Jenkins
+      command: docker exec jenkins docker --version
+      register: docker_check
+      failed_when: docker_check.rc != 0
+
+    - name: Tampilkan versi Docker di Jenkins
       debug:
-        msg: "✅ Jenkins berhasil dikonfigurasi dengan JCasC!"
-      when: jenkins_final.status == 200
+        msg: "✅ {{ docker_check.stdout }}"
