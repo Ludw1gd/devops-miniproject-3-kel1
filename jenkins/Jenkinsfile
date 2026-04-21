@@ -31,8 +31,8 @@ pipeline {
         stage('Security Scan (DevSecOps)') {
             steps {
                 echo "Memindai kerentanan menggunakan Docker Scout..."
-                // Otomatis gagal jika terdeteksi kerentanan Critical atau High
-                sh 'docker scout cves --fail-on critical,high ${DOCKER_IMAGE}:${IMAGE_TAG}'
+                // Otomatis gagal jika terdeteksi kerentanan Critical atau High (agar mengembalikan exit code 1 jika ada CVE)
+                sh 'docker scout cves --exit-code --only-severity critical,high ${DOCKER_IMAGE}:${IMAGE_TAG}'
             }
         }
 
@@ -56,7 +56,7 @@ pipeline {
                             docker pull ${DOCKER_IMAGE}:${IMAGE_TAG} &&
                             docker stop myapp-prod || true &&
                             docker rm myapp-prod || true &&
-                            docker run -d -p 80:80 --name myapp-prod ${DOCKER_IMAGE}:${IMAGE_TAG}
+                            docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:${IMAGE_TAG}
                         "
                     '''
                 }
@@ -68,7 +68,7 @@ pipeline {
             steps {
                 echo "Melakukan pengujian pasca-deployment..."
                 // Jika curl gagal, pipeline akan error dan memicu blok 'failure' untuk Rollback
-                sh "curl -f http://${TARGET_IP} || exit 1"
+                sh "curl -f http://${TARGET_IP}/health || exit 1"
             }
         }
     }
@@ -89,7 +89,7 @@ pipeline {
                             echo 'Menjalankan Rollback...' &&
                             docker stop myapp-prod || true &&
                             docker rm myapp-prod || true &&
-                            docker run -d -p 80:80 --name myapp-prod ${DOCKER_IMAGE}:latest
+                            docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:latest
                         "
                     '''
                 }
