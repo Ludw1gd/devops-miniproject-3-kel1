@@ -25,5 +25,43 @@ Setiap perubahan kode (*commit*) akan melewati proses build otomatis, pemindaian
 ## 🛠️ Persiapan Menjalankan (Prerequisites)
 *(Akan diupdate setelah Terraform selesai)*
 
+az login
+
+pertama
+
+az group create --name rg-tfstate --location "East US"
+
+kedua
+
+az storage account create --name satfstatedevopskel1 ^
+  --resource-group rg-tfstate ^
+  --sku Standard_LRS ^
+  --encryption-services blob
+
+ketiga
+
+az storage container create --name tfstate ^
+  --account-name satfstatedevopskel1
+
 ## 🚀 Panduan Eksekusi (Langkah demi Langkah)
 *(Akan diupdate: Cara menjalankan Terraform -> Ansible -> Memicu Pipeline)*
+
+Terraform
+
+jalankan terraform
+
+pertama
+
+terraform init
+
+kedua
+
+terraform validate
+
+ketiga
+
+terraform plan
+
+keempat
+
+terraform apply
