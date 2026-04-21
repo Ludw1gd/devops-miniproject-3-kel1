@@ -3,7 +3,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-    res.send('🚀 CI/CD Pipeline Berhasil! Aplikasi berjalan dengan aman.');
+    res.send('Hello World! Deploy Otomatis via JCasC Berhasil!');
 });
 
 // Endpoint untuk smoke test post-deployment

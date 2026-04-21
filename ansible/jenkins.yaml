@@ -8,6 +8,7 @@ jenkins:
         - id: "admin"
           password: "adminpassword"
 
+# PINDAHKAN KE SINI (Rata Kiri/Root Level)
 credentials:
   system:
     domainCredentials:
@@ -16,7 +17,7 @@ credentials:
               scope: GLOBAL
               id: "dockerhub-credentials"
               username: "abhi1020"
-              password: "henshin 1020"
+              password: "${DOCKER_HUB_PASSWORD}" # Diambil dari ENV kontainer
           - basicSSHUserPrivateKey:
               scope: GLOBAL
               id: "target-vm-ssh"
@@ -25,10 +26,6 @@ credentials:
                 directEntry:
                   privateKey: "${TARGET_VM_PRIVATE_KEY}"
 
-unclassified:
-  location:
-    url: "http://85.211.243.25:8080/"
-
 jobs:
   - script: >
       pipelineJob('CI-CD-Pipeline-App') {
@@ -36,9 +33,7 @@ jobs:
           cpsScm {
             scm {
               git {
-                remote {
-                  url('https://github.com/ludw1gd/devops-miniproject-3-kel1.git')
-                }
+                remote { url('https://github.com/ludw1gd/devops-miniproject-3-kel1.git') }
                 branches('main')
               }
             }
