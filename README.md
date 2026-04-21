@@ -157,10 +157,10 @@ source .env && ansible-playbook -i inventory.ini setup.yml
 ## 🔁 Rollback Automation
 Jika deployment baru gagal pada tahap *Smoke Test* atau *Security Scan*, Jenkins akan secara otomatis menjalankan kembali image dengan tag `:latest` (versi stabil sebelumnya) di VM Target untuk menjaga ketersediaan layanan.
 
+<img width="1657" height="525" alt="Screenshot 2026-04-22 051438" src="https://github.com/user-attachments/assets/833544e2-0368-4edd-b2b1-ea12c53748d1" />
+
 ## 🌐 Akses Aplikasi
 - **Aplikasi Utama:** `http://85.211.253.241`
 - **Jenkins Dashboard:** `http://85.211.243.25:8080`
 ```
-
----
 
