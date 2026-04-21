@@ -9,7 +9,7 @@ pipeline {
         
         // Konfigurasi Image
         DOCKER_IMAGE = 'abhi1020/miniproject3-app' // Ganti dengan repository Docker Hub Anda
-        TARGET_IP = 'IP_ADDRESS_VM_TARGET' // Minta IP ini dari rekan yang mengerjakan Terraform
+        TARGET_IP = '85.211.253.241' // Minta IP ini dari rekan yang mengerjakan Terraform
         
         // Pipeline Traceability: Mengambil 7 karakter Git Commit ID sebagai Tag
         GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
