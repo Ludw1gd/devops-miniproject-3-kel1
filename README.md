@@ -23,45 +23,55 @@ Setiap perubahan kode (*commit*) akan melewati proses build otomatis, pemindaian
 - `/jenkins` - Jenkinsfile untuk logika CI/CD pipeline.
 
 ## 🛠️ Persiapan Menjalankan (Prerequisites)
-*(Akan diupdate setelah Terraform selesai)*
+Pastikan sudah terinstall:
+- Docker
+- Git
+- Terraform
+- Azure CLI
+- Ansible
+- Jenkins (atau akan dibuat via Ansible)
 
+## ☁️ Setup Azure (Terraform Backend)
+**1.1 Login ke Azure**
+```
 az login
+```
 
-pertama
-
+**1.2 Buat Resource Group**
+```
 az group create --name rg-tfstate --location "East US"
+```
 
-kedua
-
+**1.3 Buat Storage Account** 
+```
 az storage account create --name satfstatedevopskel1 ^
   --resource-group rg-tfstate ^
   --sku Standard_LRS ^
   --encryption-services blob
+```
 
-ketiga
-
+**1.4 Buat Container**
+```
 az storage container create --name tfstate ^
   --account-name satfstatedevopskel1
+```
 
-## 🚀 Panduan Eksekusi (Langkah demi Langkah)
-*(Akan diupdate: Cara menjalankan Terraform -> Ansible -> Memicu Pipeline)*
+## 🏗️ Deployment Infrastruktur (Terraform)
+Masuk ke folder terraform:
+```
+cd terraform
+```
 
-Terraform
-
-jalankan terraform
-
-pertama
-
+Jalankan:
+```
 terraform init
-
-kedua
-
 terraform validate
-
-ketiga
-
 terraform plan
-
-keempat
-
 terraform apply
+```
+
+Setelah selesai, kamu akan mendapatkan:
+- IP Jenkins VM
+- IP Worker VM (target deployment)
+
+## ⚙️ Setup Server (Ansible)
