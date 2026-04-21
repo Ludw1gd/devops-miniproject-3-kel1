@@ -82,7 +82,37 @@ CMD ["node", "main.js"]
 
 **🔁 Pipeline Flow**
 
+**Build Image**
+```
+docker build -t devops-app:test ./app
+```
+
+**Test Container**
+```
+docker run -d -p 3000:3000 --name test-app devops-app:test
+
+curl http://localhost:3000/
+curl http://localhost:3000/health
+
+docker stop test-app && docker rm test-app
+```
+
+**Security Scan (DevSecOps)**
+
+Untuk simulasi kondisi FAIL (ada CVE Critical/High), jalankan:
+```
+docker scout cves --exit-code --only-severity critical,high devops-app:test
+echo "Exit code: $?"
+```
+
 **📌 Output Tahap 1**
+<img width="822" height="439" alt="Screenshot 2026-04-21 204011" src="https://github.com/user-attachments/assets/e905a6f7-8e9e-416f-9b21-48e07601439b" />
+
+**Keterangan:**
+- Pipeline gagal pada tahap security scan
+- Ditemukan 21 HIGH vulnerabilities
+- Exit code = 2
+- Hal ini menunjukkan mekanisme DevSecOps berjalan dengan baik
 
 ## ☁️ Tahap 2: Infrastructure as Code (Terraform)
 **🎯 Tujuan**
