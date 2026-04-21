@@ -56,22 +56,84 @@ az storage container create --name tfstate ^
   --account-name satfstatedevopskel1
 ```
 
-## 🏗️ Deployment Infrastruktur (Terraform)
-Masuk ke folder terraform:
+## 🐳 Tahap 1: Kontainerisasi & DevSecOps
+**🎯 Tujuan**
+- Membuat Docker image dari aplikasi
+- Integrasi security scanning
+- Pipeline gagal jika ada vulnerability
+
+**🧱 Dockerfile**
 ```
-cd terraform
+# Stage 1: Build
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+
+# Stage 2: Production (Minimal Image)
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app ./   
+USER node                      
+EXPOSE 3000
+CMD ["node", "main.js"]
 ```
 
-Jalankan:
+**🔁 Pipeline Flow**
+
+**📌 Output Tahap 1**
+
+## ☁️ Tahap 2: Infrastructure as Code (Terraform)
+**🎯 Tujuan**
+
+Provision infrastructure secara otomatis di Azure.
+
+**🔧 Resource**
+- 1 VM Jenkins
+- 1 VM Deployment
+- VNet + Subnet
+- Network Security Group
+
+**▶️ Eksekusi**
 ```
+cd terraform
 terraform init
 terraform validate
 terraform plan
 terraform apply
 ```
 
-Setelah selesai, kamu akan mendapatkan:
-- IP Jenkins VM
-- IP Worker VM (target deployment)
+**📌 Output Tahap 2**
 
-## ⚙️ Setup Server (Ansible)
+## ⚙️ Tahap 3: Configuration as Code (Ansible + JCasC)
+**🎯 Tujuan**
+
+Mengotomatisasi setup server & Jenkins.
+
+**🔧 Implementasi**
+**Setup Node**
+- Install Docker
+- Install dependencies
+**Setup Jenkins**
+- Install Jenkins container
+- Install plugin
+**JCasC**
+- Setup pipeline
+- Setup credentials (Docker Hub & SSH)
+
+**▶️ Eksekusi**
+
+**🚀 Deployment Otomatis**
+
+**📌 Output Tahap 3**
+
+## 🔍 Traceability
+
+## 🔁 Rollback Automation
+```
+docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:latest
+```
+
+## 🌐 Akses Aplikasi
+
