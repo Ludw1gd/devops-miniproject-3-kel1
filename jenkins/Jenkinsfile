@@ -2,28 +2,27 @@ pipeline {
     agent any
 
     environment {
-        // Variabel Kredensial yang harus disiapkan di Jenkins
-        DOCKER_CRED_ID = 'dockerhub-credentials' 
-        SSH_CRED_ID = 'target-vm-ssh'
-        SLACK_WORKSPACE = 'slack-token' // Opsional jika plugin butuh token spesifik
-        
-        // Konfigurasi Image
-        DOCKER_IMAGE = 'abhi1020/miniproject3-app' // Ganti dengan repository Docker Hub Anda
-        TARGET_IP = '85.211.253.241' // Minta IP ini dari rekan yang mengerjakan Terraform
-        
-        // Pipeline Traceability: Mengambil 7 karakter Git Commit ID sebagai Tag
+        DOCKER_CRED_ID  = 'dockerhub-credentials'
+        SSH_CRED_ID     = 'target-vm-ssh'
+        SLACK_CRED_ID   = 'slack-token'          // ← Gunakan ini, bukan SLACK_WORKSPACE
+
+        DOCKER_IMAGE    = 'abhi1020/miniproject3-app'
+        TARGET_IP       = '85.211.253.241'
+        SSH_USER_NAME   = 'azureuser'            // ← Pisah jadi variabel agar jelas
+
         GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        IMAGE_TAG = "${GIT_COMMIT_SHORT}"
+        IMAGE_TAG        = "${GIT_COMMIT_SHORT}"
     }
 
     stages {
+
         stage('Build Image') {
             steps {
                 echo "Membangun Docker Image versi: ${IMAGE_TAG}"
-                // Arahkan context build ke folder /app sesuai struktur repositori Anda
                 dir('app') {
-                    sh 'docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .'
-                    sh 'docker tag ${DOCKER_IMAGE}:${IMAGE_TAG} ${DOCKER_IMAGE}:latest'
+                    // ← Pakai double-quote agar variabel diinterpolasi Groovy
+                    sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${IMAGE_TAG} ${DOCKER_IMAGE}:latest"
                 }
             }
         }
@@ -31,44 +30,51 @@ pipeline {
         stage('Security Scan (DevSecOps)') {
             steps {
                 echo "Memindai kerentanan menggunakan Docker Scout..."
-                // Otomatis gagal jika terdeteksi kerentanan Critical atau High (agar mengembalikan exit code 1 jika ada CVE)
-                sh 'docker scout cves --exit-code --only-severity critical,high ${DOCKER_IMAGE}:${IMAGE_TAG}'
+                sh "docker scout cves --exit-code --only-severity critical,high ${DOCKER_IMAGE}:${IMAGE_TAG}"
             }
         }
 
         stage('Push to Registry') {
             steps {
                 echo "Mengunggah image ke Docker Hub..."
-                withCredentials([usernamePassword(credentialsId: env.DOCKER_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(
+                    credentialsId: env.DOCKER_CRED_ID,
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push ${DOCKER_IMAGE}:${IMAGE_TAG}'
-                    sh 'docker push ${DOCKER_IMAGE}:latest'
+                    sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                    sh "docker push ${DOCKER_IMAGE}:latest"
                 }
             }
         }
 
         stage('Deploy to Target Node') {
             steps {
-                echo "Men-deploy image versi ${IMAGE_TAG} ke Target VM Azure..."
-                withCredentials([sshUserPrivateKey(credentialsId: env.SSH_CRED_ID, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
-                    sh '''
-                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_USER@${TARGET_IP} "
+                echo "Men-deploy image versi ${IMAGE_TAG} ke Target VM..."
+                withCredentials([sshUserPrivateKey(
+                    credentialsId: env.SSH_CRED_ID,
+                    keyFileVariable: 'SSH_KEY',
+                    usernameVariable: 'SSH_USER'    // azureuser akan terisi dari credential
+                )]) {
+                    // ← Pisah jadi beberapa perintah agar error lebih mudah dilacak
+                    sh """
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \$SSH_USER@${TARGET_IP} '
                             docker pull ${DOCKER_IMAGE}:${IMAGE_TAG} &&
                             docker stop myapp-prod || true &&
                             docker rm myapp-prod || true &&
                             docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:${IMAGE_TAG}
-                        "
-                    '''
+                        '
+                    """
                 }
             }
         }
-        
-        // Opsional: Tahap Smoke Test (Memastikan aplikasi merespons HTTP 200)
+
         stage('Smoke Test') {
             steps {
                 echo "Melakukan pengujian pasca-deployment..."
-                // Jika curl gagal, pipeline akan error dan memicu blok 'failure' untuk Rollback
-                sh "curl -f http://${TARGET_IP}/health || exit 1"
+                // Beri waktu container naik sebelum test
+                sh "sleep 5 && curl -f http://${TARGET_IP}/health || exit 1"
             }
         }
     }
@@ -76,25 +82,51 @@ pipeline {
     post {
         success {
             echo "Deployment Berhasil!"
-            slackSend(color: 'good', message: "✅ *Deployment Berhasil* | Aplikasi: Miniproject 3 | Commit Tag: `${IMAGE_TAG}` | Build #${env.BUILD_NUMBER}")
+            slackSend(
+                tokenCredentialId: env.SLACK_CRED_ID,  // ← FIX: pakai tokenCredentialId
+                channel: '#deployments',
+                color: 'good',
+                message: "✅ *Deployment Berhasil* | Commit: `${IMAGE_TAG}` | Build #${env.BUILD_NUMBER}"
+            )
         }
+
         failure {
-            echo "Deployment Gagal! Memulai proses Rollback otomatis..."
-            slackSend(color: 'danger', message: "🚨 *Deployment Gagal* | Commit Tag: `${IMAGE_TAG}` | Memulai Rollback ke versi `latest` yang stabil...")
-            
+            echo "Deployment Gagal! Memulai Rollback..."
+            // Slack dulu — jangan blok rollback kalau slack gagal
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                slackSend(
+                    tokenCredentialId: env.SLACK_CRED_ID,  // ← FIX
+                    channel: '#deployments',
+                    color: 'danger',
+                    message: "🚨 *Deployment Gagal* | Commit: `${IMAGE_TAG}` | Rollback dimulai..."
+                )
+            }
+
             script {
-                withCredentials([sshUserPrivateKey(credentialsId: env.SSH_CRED_ID, keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
-                    sh '''
-                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_USER@${TARGET_IP} "
-                            echo 'Menjalankan Rollback...' &&
+                withCredentials([sshUserPrivateKey(
+                    credentialsId: env.SSH_CRED_ID,
+                    keyFileVariable: 'SSH_KEY',
+                    usernameVariable: 'SSH_USER'
+                )]) {
+                    sh """
+                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \$SSH_USER@${TARGET_IP} '
+                            echo "Menjalankan Rollback..." &&
                             docker stop myapp-prod || true &&
                             docker rm myapp-prod || true &&
                             docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:latest
-                        "
-                    '''
+                        '
+                    """
                 }
             }
-            slackSend(color: 'warning', message: "⚠️ *Rollback Selesai* | Sistem telah dikembalikan ke versi sebelumnya.")
+
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                slackSend(
+                    tokenCredentialId: env.SLACK_CRED_ID,
+                    channel: '#deployments',
+                    color: 'warning',
+                    message: "⚠️ *Rollback Selesai* | Sistem kembali ke versi sebelumnya."
+                )
+            }
         }
     }
 }

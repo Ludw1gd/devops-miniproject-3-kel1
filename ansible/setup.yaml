@@ -43,6 +43,21 @@
           - docker-compose-plugin
         state: present
 
+- name: Fix Docker permission di Target VM
+  hosts: target
+  become: yes
+  tasks:
+    - name: Tambahkan user azureuser ke grup docker
+      user:
+        name: azureuser
+        groups: docker
+        append: yes
+
+    - name: Set permission docker.sock
+      file:
+        path: /var/run/docker.sock
+        mode: '0666'
+
 # ==========================================
 - name: Konfigurasi Jenkins via JCasC (Strategi 2-Fase)
   hosts: jenkins
@@ -95,6 +110,11 @@
         user: root
         env:
           JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+    
+    - name: Install Docker CLI di dalam Jenkins container
+      command: >
+        docker exec jenkins bash -c 
+        "apt-get update -qq && apt-get install -y docker.io"
 
     - name: Tunggu Jenkins HTTP ready (bukan pakai pause)
       uri:
