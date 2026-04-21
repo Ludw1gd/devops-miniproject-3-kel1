@@ -1,7 +1,7 @@
 variable "location" {
   description = "Region Azure tempat semua resource akan di-deploy"
   type        = string
-  default     = "East US"
+  default     = "Malaysia West"
 }
 
 variable "resource_group_name" {
@@ -44,12 +44,12 @@ variable "vms" {
   default = {
     jenkins = {
       role      = "jenkins-node"
-      size      = "Standard_B2s"
+      size      = "Standard_D2s_v3"
       open_8080 = true
     }
     target = {
       role      = "target-node"
-      size      = "Standard_B1s"
+      size      = "Standard_D2s_v3"
       open_8080 = false
     }
   }

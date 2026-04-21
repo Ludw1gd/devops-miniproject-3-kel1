@@ -34,10 +34,10 @@ terraform {
   required_version = ">= 1.3.0"
 
   backend "azurerm" {
-    resource_group_name  = "rg-tfstate"           # RG khusus untuk menyimpan state
-    storage_account_name = "satfstatedevopskel1"       # GANTI: harus globally unique di Azure
-    container_name       = "tfstate"               # Container blob
-    key                  = "ubuntu-lab.terraform.tfstate"  # Nama file state
+    resource_group_name  = "rg-tfstate-baru"              # RG khusus untuk menyimpan state
+    storage_account_name = "satfstatekel1abhinaya"        # GANTI: harus globally unique di Azure
+    container_name       = "tfstate"                      # Container blob
+    key                  = "ubuntu-lab.terraform.tfstate" # Nama file state
   }
 
   required_providers {
@@ -84,7 +84,7 @@ resource "tls_private_key" "ssh" {
 resource "local_sensitive_file" "private_key" {
   content         = tls_private_key.ssh.private_key_pem
   filename        = "${path.module}/ssh_private_key.pem"
-  file_permission = "0600"  # Hanya owner yang bisa baca (wajib untuk SSH client)
+  file_permission = "0600" # Hanya owner yang bisa baca (wajib untuk SSH client)
 }
 
 
@@ -151,7 +151,7 @@ resource "azurerm_network_security_group" "nsg" {
   # ---- RULE 2: Port 8080 — HANYA untuk Jenkins Node -----------------------
   # dynamic block: rule ini hanya dibuat jika open_8080 = true
   dynamic "security_rule" {
-    for_each = each.value.open_8080 ? [1] : []  # [1] = buat rule | [] = skip
+    for_each = each.value.open_8080 ? [1] : [] # [1] = buat rule | [] = skip
     content {
       name                       = "Allow-Jenkins-8080"
       priority                   = 110
@@ -231,7 +231,7 @@ resource "azurerm_network_interface_security_group_association" "nic_nsg" {
 # =============================================================================
 resource "azurerm_linux_virtual_machine" "vm" {
   for_each            = var.vms
-  name                = "vm-${each.key}"            # vm-jenkins | vm-target
+  name                = "vm-${each.key}" # vm-jenkins | vm-target
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   size                = each.value.size
@@ -242,7 +242,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   # FIX #3 — SSH Key Authentication (password dinonaktifkan sepenuhnya)
   # Public key yang di-generate oleh resource tls_private_key.ssh di atas
-  disable_password_authentication = true  # Password auth dimatikan = lebih aman
+  disable_password_authentication = true # Password auth dimatikan = lebih aman
   admin_ssh_key {
     username   = var.admin_username
     public_key = tls_private_key.ssh.public_key_openssh
@@ -262,10 +262,10 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 
-  computer_name = each.key  # hostname: "jenkins" atau "target"
+  computer_name = each.key # hostname: "jenkins" atau "target"
 
   boot_diagnostics {
-    storage_account_uri = null  # Managed storage Azure (gratis)
+    storage_account_uri = null # Managed storage Azure (gratis)
   }
 
   tags = merge(var.tags, { Role = each.value.role })
