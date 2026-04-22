@@ -148,6 +148,7 @@
         docker-workflow
         slack
         job-dsl
+        github-pullrequest:0.7.3
       register: plugin_result
       failed_when: plugin_result.rc != 0
 
