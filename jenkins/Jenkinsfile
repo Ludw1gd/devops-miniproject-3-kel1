@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers {
+        githubPush()
+    }
+
     environment {
         DOCKER_CRED_ID  = 'dockerhub-credentials'
         SSH_CRED_ID     = 'target-vm-ssh'
@@ -15,6 +19,12 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                echo "Mengambil kode dari repository..."
+                checkout scm
+            }
+        }
 
         stage('Build Image') {
             steps {

@@ -1,14 +1,19 @@
 # Stage 1: Build
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+# Gunakan --omit=dev agar dependensi testing/development tidak ikut di production
+RUN npm ci --omit=dev
 COPY . .
 
 # Stage 2: Production (Minimal Image)
-FROM node:18-alpine
+FROM node:20-alpine
+RUN apk update && apk upgrade --no-cache && rm -rf /var/cache/apk/*
+
 WORKDIR /app
-COPY --from=builder /app ./   
-USER node                      
+COPY --chown=node:node --from=builder /app ./ 
+
+# Pindah ke non-root user
+USER node 
 EXPOSE 3000
-CMD ["node", "main.js"]
+CMD["node", "main.js"]
