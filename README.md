@@ -107,11 +107,15 @@ echo "Exit code: $?"
 
 **📌 Output Tahap 1**
 <img width="822" height="439" alt="Screenshot 2026-04-21 204011" src="https://github.com/user-attachments/assets/e905a6f7-8e9e-416f-9b21-48e07601439b" />
+<img width="1449" height="723" alt="Screenshot 2026-04-22 053203" src="https://github.com/user-attachments/assets/8399976b-1863-4c6c-b06d-6a2261d6b818" />
+<img width="1453" height="217" alt="Screenshot 2026-04-22 052813" src="https://github.com/user-attachments/assets/58a78b77-503f-45a0-8cd9-3a3757bf6ec8" />
+<img width="1431" height="292" alt="Screenshot 2026-04-22 052839" src="https://github.com/user-attachments/assets/c7cf6c4e-37a1-4b17-ba94-e8d20eece54c" />
 
 **Keterangan:**
 - Pipeline gagal pada tahap security scan
 - Ditemukan 21 HIGH vulnerabilities
 - Exit code = 2
+- Gagal melakukan deployment karena terdapat CVE maka melakukan rollback
 - Hal ini menunjukkan mekanisme DevSecOps berjalan dengan baik
 
 ## ☁️ Tahap 2: Infrastructure as Code (Terraform)
