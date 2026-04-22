@@ -16,4 +16,4 @@ COPY --chown=node:node --from=builder /app ./
 # Pindah ke non-root user
 USER node 
 EXPOSE 3000
-CMD["node", "main.js"]
+CMD ["node", "main.js"]
