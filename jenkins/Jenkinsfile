@@ -63,33 +63,23 @@ pipeline {
 
         stage('Deploy to Target Node') {
             steps {
-                echo "Men-deploy image versi ${IMAGE_TAG} ke Target VM..."
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: env.SSH_CRED_ID,
-                    keyFileVariable: 'SSH_KEY',
-                    usernameVariable: 'SSH_USER'    // azureuser akan terisi dari credential
-                )]) {
-                    // ← Pisah jadi beberapa perintah agar error lebih mudah dilacak
-                    sh """
-                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \$SSH_USER@${TARGET_IP} '
-                            docker pull ${DOCKER_IMAGE}:${IMAGE_TAG} &&
-                            docker stop myapp-prod || true &&
-                            docker rm myapp-prod || true &&
-                            docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:${IMAGE_TAG}
-                        '
-                    """
-                }
+                echo "Men-deploy image versi ${IMAGE_TAG} ke Local Target..."
+                // Tidak perlu SSH, langsung jalankan Docker!
+                sh """
+                    docker pull ${DOCKER_IMAGE}:${IMAGE_TAG}
+                    docker stop myapp-prod || true
+                    docker rm myapp-prod || true
+                    docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:${IMAGE_TAG}
+                """
             }
         }
 
         stage('Smoke Test') {
             steps {
                 echo "Melakukan pengujian pasca-deployment..."
-                // Beri waktu container naik sebelum test
-                sh "sleep 5 && curl -f http://${TARGET_IP}/health || exit 1"
+                sh "sleep 5 && curl -f http://localhost:80/health || exit 1"
             }
         }
-    }
 
     post {
         success {
@@ -115,20 +105,12 @@ pipeline {
             }
 
             script {
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: env.SSH_CRED_ID,
-                    keyFileVariable: 'SSH_KEY',
-                    usernameVariable: 'SSH_USER'
-                )]) {
-                    sh """
-                        ssh -i \$SSH_KEY -o StrictHostKeyChecking=no \$SSH_USER@${TARGET_IP} '
-                            echo "Menjalankan Rollback..." &&
-                            docker stop myapp-prod || true &&
-                            docker rm myapp-prod || true &&
-                            docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:latest
-                        '
-                    """
-                }
+                sh """
+                    echo "Menjalankan Rollback di Local Target..."
+                    docker stop myapp-prod || true
+                    docker rm myapp-prod || true
+                    docker run -d -p 80:3000 --name myapp-prod ${DOCKER_IMAGE}:latest
+                """
             }
 
             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
