@@ -6,3 +6,4 @@ node_modules/
 *.tfvars
 *.pem
 .env
+ansible/jenkins_home_local/

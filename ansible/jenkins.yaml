@@ -1,5 +1,5 @@
 jenkins:
-  systemMessage: "Pipeline CI/CD Otomatis untuk Mini Project 3 Kelompok 1"
+  systemMessage: "Pipeline CI/CD Otomatis (Demo Lokal Kelompok 1)"
   numExecutors: 2
   securityRealm:
     local:
@@ -8,7 +8,6 @@ jenkins:
         - id: "admin"
           password: "adminpassword"
 
-# PINDAHKAN KE SINI (Rata Kiri/Root Level)
 credentials:
   system:
     domainCredentials:
@@ -17,14 +16,11 @@ credentials:
               scope: GLOBAL
               id: "dockerhub-credentials"
               username: "abhi1020"
-              password: "${DOCKER_HUB_PASSWORD}" # Diambil dari ENV kontainer
-          - basicSSHUserPrivateKey:
+              password: "${DOCKER_HUB_PASSWORD}"
+          - string:
               scope: GLOBAL
-              id: "target-vm-ssh"
-              username: "azureuser"
-              privateKeySource:
-                directEntry:
-                  privateKey: "${TARGET_VM_PRIVATE_KEY}"
+              id: "slack-token"
+              secret: "${SLACK_TOKEN}"
 
 jobs:
   - script: >
@@ -34,10 +30,13 @@ jobs:
             scm {
               git {
                 remote { url('https://github.com/ludw1gd/devops-miniproject-3-kel1.git') }
-                branches('main')
+                branches('local-demo') # Ganti ke 'main' jika Anda tidak menggunakan branch khusus
               }
             }
             scriptPath('jenkins/Jenkinsfile')
           }
+        }
+        triggers {
+          githubPush()
         }
       }
