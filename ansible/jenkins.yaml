@@ -21,6 +21,13 @@ credentials:
               scope: GLOBAL
               id: "slack-token"
               secret: "${SLACK_TOKEN}"
+          - sshUserPrivateKey:
+              scope: GLOBAL
+              id: "target-vm-ssh-key"
+              username: "azureuser"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${TARGET_VM_PRIVATE_KEY}"
 
 jobs:
   - script: >
